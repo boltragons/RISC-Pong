@@ -15,7 +15,7 @@ _start:
 	.cfi_undefined ra
 .option push
 .option norelax
-	la gp, __global_pointer$
+ 	la gp, __global_pointer$
 .option pop
 	la sp, _sp
 

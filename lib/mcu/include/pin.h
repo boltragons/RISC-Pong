@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "interrupts.h"
+
 #define pinLOW      0
 #define pinHIGH     1
 
@@ -20,7 +22,8 @@ typedef struct PinConfig_t {
     bool xEnablePullUp;
 } PinConfig_t;
 
-typedef enum EdgeTrigger {
+typedef enum InterruptTrigger {
+    eNoneEdge = 1,
     eRisingEdge,
     eFallingEdge,
     eBothEdges
@@ -33,15 +36,13 @@ typedef struct InterruptConfig_t {
 
 void vPinInit(uint32_t ulPinNumber, const PinConfig_t *xPinConfig);
 
-void vPinGetDefaultConfig(PinConfig_t *xPinConfig);
+void vPinInitDefaultConfig(uint32_t ulPinNumber);
 
 void vPinEnableInterrupt(uint32_t ulPinNumber, const InterruptConfig_t *xInterruptConfig);
 
 void vPinGetDefaultInterruptConfig(InterruptConfig_t *xInterruptConfig);
 
-uint32_t ulPinClaimInterrupt(void);
-
-void vPinCompleteInterrupt(uint32_t ulInterruptId);
+InterruptTrigger ePinCheckInterruptEvent(uint32_t ulPinNumber);
 
 void vPinClearInterruptFlag(uint32_t ulPinNumber);
 
@@ -54,5 +55,13 @@ void vPinToggleLevel(uint32_t ulPinNumber);
 void vPinWriteLevel(uint32_t ulPinNumber, DigitalLevel xLevel);
 
 DigitalLevel xPinReadLevel(uint32_t ulPinNumber);
+
+static inline uint32_t ulPinClaimInterrupt(void) {
+    return ulInterruptsClaim();
+}
+
+static inline void vPinCompleteInterrupt(uint32_t ulInterruptId) {
+    vInterruptsComplete(ulInterruptId);
+}
 
 #endif

@@ -2,9 +2,6 @@
 
 #include "platform.h"
 
-#define pinGPIO_ID(pin) (8 + pin)
-#define pinGPIO_PRIORITY_REGISTER(pin) (4*(pinGPIO_ID(pin)))
-
 void vPinInit(uint32_t ulPinNumber, const PinConfig_t *xPinConfig) {
     GPIO_REG(GPIO_IOF_EN) &= ~(1U << ulPinNumber);
     
@@ -18,24 +15,25 @@ void vPinInit(uint32_t ulPinNumber, const PinConfig_t *xPinConfig) {
     if(xPinConfig->eDirection == eOutput) {
         GPIO_REG(GPIO_OUTPUT_EN) |= (1U << ulPinNumber);
         GPIO_REG(GPIO_INPUT_EN)  &= ~(1U << ulPinNumber);
+
+        if(xPinConfig->xDefaultLevel == pinHIGH) {
+            GPIO_REG(GPIO_OUTPUT_VAL) |= (1U << ulPinNumber);
+        }
+        else {
+            GPIO_REG(GPIO_OUTPUT_VAL) &= ~(1U << ulPinNumber);
+        }
     }
     else {
         GPIO_REG(GPIO_INPUT_EN)  |= (1U << ulPinNumber);
         GPIO_REG(GPIO_OUTPUT_EN) &= ~(1U << ulPinNumber);
     }
-
-    if(xPinConfig->xDefaultLevel == pinHIGH) {
-        GPIO_REG(GPIO_OUTPUT_VAL) |= (1U << ulPinNumber);
-    }
-    else {
-        GPIO_REG(GPIO_OUTPUT_VAL) &= ~(1U << ulPinNumber);
-    }
 }
 
-void vPinGetDefaultConfig(PinConfig_t *xPinConfig) {
-    xPinConfig->eDirection = eOutput;
-    xPinConfig->xDefaultLevel = pinLOW;
-    xPinConfig->xEnablePullUp = false;
+void vPinInitDefaultConfig(uint32_t ulPinNumber) {
+    GPIO_REG(GPIO_IOF_EN)    &= ~(1U << ulPinNumber);
+    GPIO_REG(GPIO_INPUT_EN)  |=  (1U << ulPinNumber);
+    GPIO_REG(GPIO_OUTPUT_EN) &= ~(1U << ulPinNumber);
+    GPIO_REG(GPIO_PULLUP_EN) |=  (1U << ulPinNumber);
 }
 
 void vPinEnableInterrupt(uint32_t ulPinNumber, const InterruptConfig_t *xInterruptConfig) {
@@ -52,11 +50,11 @@ void vPinEnableInterrupt(uint32_t ulPinNumber, const InterruptConfig_t *xInterru
         GPIO_REG(GPIO_RISE_IE) |= (1U << ulPinNumber);
         GPIO_REG(GPIO_FALL_IE) |= (1U << ulPinNumber);
         break;
+    default:
+        return;
     }
-
-    PLIC_REG(pinGPIO_PRIORITY_REGISTER(ulPinNumber)) = xInterruptConfig->ucPriority;
-
-    PLIC_REG(PLIC_ENABLE_OFFSET) |= pinGPIO_ID(ulPinNumber);
+    
+    vInterruptsEnable(intGPIO_IRQ_ID(ulPinNumber), xInterruptConfig->ucPriority);
 }
 
 void vPinGetDefaultInterruptConfig(InterruptConfig_t *xInterruptConfig) {
@@ -64,21 +62,18 @@ void vPinGetDefaultInterruptConfig(InterruptConfig_t *xInterruptConfig) {
     xInterruptConfig->ucPriority = 0;
 }
 
-uint32_t ulPinClaimInterrupt(void) {
-    return PLIC_REG(PLIC_CLAIM_OFFSET);
-}
-
-void vPinCompleteInterrupt(uint32_t ulInterruptId) {
-    PLIC_REG(PLIC_CLAIM_OFFSET) = ulInterruptId;
+InterruptTrigger ePinCheckInterruptEvent(uint32_t ulPinNumber) {
+    if(GPIO_REG(GPIO_FALL_IP) & (1U << ulPinNumber)) {
+        return eFallingEdge;
+    } else if(GPIO_REG(GPIO_RISE_IP) & (1U << ulPinNumber)) {
+        return eRisingEdge;
+    }
+    return eNoneEdge;
 }
 
 void vPinClearInterruptFlag(uint32_t ulPinNumber) {
-    if(GPIO_REG(GPIO_FALL_IP) & (1U << ulPinNumber)) {
-        GPIO_REG(GPIO_FALL_IP) |= (1U << ulPinNumber);
-    }
-    if(GPIO_REG(GPIO_RISE_IP) & (1U << ulPinNumber)) {
-        GPIO_REG(GPIO_RISE_IP) |= (1U << ulPinNumber);
-    }
+    GPIO_REG(GPIO_FALL_IP) |= (1U << ulPinNumber);
+    GPIO_REG(GPIO_RISE_IP) |= (1U << ulPinNumber);
 }
 
 void vPinSetLevel(uint32_t ulPinNumber) {
@@ -105,3 +100,4 @@ void vPinWriteLevel(uint32_t ulPinNumber, DigitalLevel xLevel) {
 DigitalLevel xPinReadLevel(uint32_t ulPinNumber) {
     return (GPIO_REG(GPIO_INPUT_VAL) >> ulPinNumber) & 1;
 }
+

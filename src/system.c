@@ -1,12 +1,16 @@
 #include "system.h"
 
+/* Board Support Package (BSP) */
 #include "platform.h"
 #include "wrap.h"
 #include "startup.h"
+
+/* OLED Display Interface */
 #include "display.h"
 #include "font.h"
 #include "framebuffer.h"
 
+/* Hardware Abstraction Layer (HAL) */
 #include "pin.h"
 
 /* System Macros */
@@ -46,6 +50,8 @@ uint32_t ulSystemButtons[eNumberButtons] = {systemBUTTON_GREEN_PIN, systemBUTTON
 
 /* Private Functions */
 
+static void prvSystemMcuInit(void);
+
 static void prvSystemLedInit(void);
 
 static void prvSystemButtonInit(void);
@@ -55,6 +61,7 @@ static void prvSystemDisplayInit(void);
 /* Global Functions */
 
 void vSystemInit(void) {
+    prvSystemMcuInit();
     prvSystemLedInit();
     prvSystemButtonInit();
     prvSystemDisplayInit();
@@ -132,11 +139,32 @@ Level eSystemReadButton(Button eButton) {
     return !xPinReadLevel(ulSystemButtons[eButton]);
 }
 
+uint32_t ulSystemBeginInterruptHandling(void) {
+    return ulPinClaimInterrupt();
+}
+
+Button eSystemCheckInterruptSource(uint32_t ulInterruptId) {
+    for(uint8_t i = 0; i < eNumberButtons; i++) {
+        if(ulSystemButtons[i] == (intGPIO_IRQ_ID_TO_PIN(ulInterruptId))) {
+            return i;
+        }
+    }
+    return eInvalidButton;
+}
+
+void vSystemEndInterruptHandling(uint32_t ulInterruptId) {
+    vPinClearInterruptFlag(intGPIO_IRQ_ID_TO_PIN(ulInterruptId));
+    vPinCompleteInterrupt(ulInterruptId);
+}
+
 /* Private Functions */
 
-void prvSystemDisplayInit(void) {
-    vDisplayInit();
-    vFrameBufferInit();
+
+static void prvSystemMcuInit(void) {
+    for(uint32_t ulMcuPin = 0; ulMcuPin < 32; ulMcuPin++) {
+        vPinInitDefaultConfig(ulMcuPin);
+    }
+    vInterruptsInitController();
 }
  
 void prvSystemLedInit(void) {
@@ -163,4 +191,32 @@ void prvSystemButtonInit(void) {
     vPinInit(systemBUTTON_BLUE_PIN, &xPinConfig);
     vPinInit(systemBUTTON_YELLOW_PIN, &xPinConfig);
     vPinInit(systemBUTTON_RED_PIN, &xPinConfig);
+
+    InterruptConfig_t xInterruptConfig = {
+        .eEdgeTrigger = eBothEdges,
+        .ucPriority = 1
+    };
+
+    vPinEnableInterrupt(systemBUTTON_GREEN_PIN, &xInterruptConfig);
+    vPinEnableInterrupt(systemBUTTON_BLUE_PIN, &xInterruptConfig);
+    vPinEnableInterrupt(systemBUTTON_YELLOW_PIN, &xInterruptConfig);
+    vPinEnableInterrupt(systemBUTTON_RED_PIN, &xInterruptConfig);
+}
+
+ButtonEvent eSystemCheckButtonEvent(Button eButton) {
+    InterruptTrigger eInterruptEvent = ePinCheckInterruptEvent(ulSystemButtons[eButton]);
+
+    if(eInterruptEvent == eFallingEdge) {
+        return ePressed;
+    }
+    else if(eInterruptEvent == eRisingEdge) {
+        return eReleased;
+    }
+
+    return eNoneEvent;
+}
+
+void prvSystemDisplayInit(void) {
+    vDisplayInit();
+    vFrameBufferInit();
 }

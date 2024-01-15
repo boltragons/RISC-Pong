@@ -2,6 +2,9 @@
 #define SYSTEM_H
 
 #include <stdint.h>
+#include <stdbool.h>
+
+#define systemNUMBER_PLAYERS 2
 
 typedef enum Level {
     eLow,
@@ -25,6 +28,12 @@ typedef enum Led {
     eRedLed,
     eNumberLeds
 } Led;
+
+typedef enum ButtonEvent {
+    eNoneEvent = -1,
+    eReleased,
+    ePressed
+} ButtonEvent;
 
 typedef enum PlayerMovement {
     eUp,
@@ -72,5 +81,13 @@ void vSystemToggleLed(Led eLed);
 void vSystemWriteLed(Led eLed, Level eLevel);
 
 Level eSystemReadButton(Button eButton);
+
+uint32_t ulSystemBeginInterruptHandling(void);
+
+Button eSystemCheckInterruptSource(uint32_t ulInterruptId);
+
+ButtonEvent eSystemCheckButtonEvent(Button eButton);
+
+void vSystemEndInterruptHandling(uint32_t ulInterruptId);
 
 #endif
