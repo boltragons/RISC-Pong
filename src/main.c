@@ -137,7 +137,6 @@ void vButtonTask(void *pvParameters) {
                 vSystemSetLed(eYellowLed);
             }
 
-            portDISABLE_INTERRUPTS();
             if(pxPlayersPads[ulPad]->eEvent == ePressed) {
                 xQueuePlayerItem.ePlayer = ulPad;
                 if(pxPlayersPads[ulPad]->eButton == eGreenButton || pxPlayersPads[ulPad]->eButton == eRedButton) {
@@ -148,7 +147,6 @@ void vButtonTask(void *pvParameters) {
                 }
                 xQueueSendToBack(xQueuePlayer, (void *) &xQueuePlayerItem, portMAX_DELAY);
             }
-            portENABLE_INTERRUPTS();
 
             if(ulPad == ePlayer1) {
                 vSystemClearLed(eBlueLed);
@@ -157,6 +155,9 @@ void vButtonTask(void *pvParameters) {
                 vSystemClearLed(eYellowLed);
             }
         }
+
+        /* Software Debouncing */
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
 }  
 
@@ -216,7 +217,11 @@ BaseType_t prvButtonInterruptHandler(Button eButton) {
 
     pxPlayerPad->eButton = eButton;
 
+#ifdef systemSIMULATOR_EXECUTION
     pxPlayerPad->eEvent = !eSystemCheckButtonEvent(eButton); 
+#else
+    pxPlayerPad->eEvent = eSystemCheckButtonEvent(eButton); 
+#endif
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
@@ -228,8 +233,6 @@ BaseType_t prvButtonInterruptHandler(Button eButton) {
 /* Global Interrupt Handler */
 
 void vInterruptHandler(void) {
-    portDISABLE_INTERRUPTS();
-
     uint32_t ulInterruptId = ulSystemBeginInterruptHandling();
 
     Button eButton = eSystemCheckInterruptSource(ulInterruptId);
@@ -241,8 +244,6 @@ void vInterruptHandler(void) {
     BaseType_t xHigherPriorityTaskWoken = prvButtonInterruptHandler(eButton);
 
     vSystemEndInterruptHandling(ulInterruptId);
-    
-    portENABLE_INTERRUPTS();
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
