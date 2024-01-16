@@ -4,7 +4,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define systemNUMBER_PLAYERS 2
+/* System Macros */
+
+#define systemNUMBER_PLAYERS            2
+#define systemDISPLAY_FRAME_PER_SECOND  60
+#define systemDISPLAY_FRAME_DURATION    16
+
+/* System Enums */
 
 typedef enum Level {
     eLow,
@@ -45,6 +51,8 @@ typedef enum PlayerId {
     ePlayer2
 } PlayerId;
 
+/* System Structs */
+
 typedef struct Player_t {
     PlayerId eId;
     uint32_t ulX;
@@ -56,7 +64,11 @@ typedef struct Ball_t {
     uint32_t ulY;
 } Ball_t;
 
+/* Initialization Interface */
+
 void vSystemInit(void);
+
+/* Game Objects Interface */
 
 void vSystemGetPlayerDefaultConfig(Player_t *pxPlayer, PlayerId eId);
 
@@ -64,13 +76,11 @@ void vSystemUpdatePlayerPosition(Player_t *pxPlayer, PlayerMovement eMovement);
 
 void vSystemGetBallDefaultConfig(Ball_t *pxBall);
 
-void vSystemDisplayDrawPlayer(const Player_t *pxPlayer);
+/* Display Interface */
 
-void vSystemDisplayDrawBall(const Ball_t *pxBall);
+void vSystemDisplayUpdateFrame(const Player_t *pxPlayer01, const Player_t *pxPlayer02, const Ball_t *pxBall);
 
-void vSystemDisplayReset(void);
-
-void vSystemDisplayUpdateFrame(void);
+/* LED Interface */
 
 void vSystemSetLed(Led eLed);
 
@@ -80,7 +90,11 @@ void vSystemToggleLed(Led eLed);
 
 void vSystemWriteLed(Led eLed, Level eLevel);
 
+/* Button Interface */
+
 Level eSystemReadButton(Button eButton);
+
+/* Interrupt Interface */
 
 uint32_t ulSystemBeginInterruptHandling(void);
 

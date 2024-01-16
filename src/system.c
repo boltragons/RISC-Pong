@@ -58,6 +58,10 @@ static void prvSystemButtonInit(void);
 
 static void prvSystemDisplayInit(void);
 
+inline static void prvSystemDisplayDrawPlayer(const Player_t *pxPlayer);
+
+inline static void prvSystemDisplayDrawBall(const Ball_t *pxBall);
+
 /* Global Functions */
 
 void vSystemInit(void) {
@@ -93,29 +97,11 @@ void vSystemGetBallDefaultConfig(Ball_t *pxBall) {
     pxBall->ulX = systemBALL_DEFAULT_X;
 }
 
-void vSystemDisplayDrawPlayer(const Player_t *pxPlayer) {
+void vSystemDisplayUpdateFrame(const Player_t *pxPlayer01, const Player_t *pxPlayer02, const Ball_t *pxBall) {
     vFrameBufferInit();
-    for(int y = pxPlayer->ulY; y < pxPlayer->ulY + systemPLAYER_HEIGHT; y++) {
-        for(int x = pxPlayer->ulX; x < pxPlayer->ulX + systemPLAYER_WIDTH; x++) {
-            vFrameBufferSetPixelDirect(x, y, 1);
-        }
-    }
-}
-
-void vSystemDisplayDrawBall(const Ball_t *pxBall) {
-    vFrameBufferInit();
-    for(int y = pxBall->ulY; y < pxBall->ulY + systemBALL_HEIGHT; y++) {
-        for(int x = pxBall->ulX; x < pxBall->ulX + systemBALL_WIDTH; x++) {
-            vFrameBufferSetPixelDirect(x, y, 1);
-        }
-    }
-}
-
-void vSystemDisplayReset(void) {
-    vFrameBufferInit();
-}
-
-void vSystemDisplayUpdateFrame(void) {
+    prvSystemDisplayDrawPlayer(pxPlayer01);
+    prvSystemDisplayDrawPlayer(pxPlayer02);
+    prvSystemDisplayDrawBall(pxBall);
     vFrameBufferFlush();
 }
 
@@ -219,4 +205,20 @@ ButtonEvent eSystemCheckButtonEvent(Button eButton) {
 void prvSystemDisplayInit(void) {
     vDisplayInit();
     vFrameBufferInit();
+}
+
+inline static void prvSystemDisplayDrawPlayer(const Player_t *pxPlayer) {
+    for(int y = pxPlayer->ulY; y < pxPlayer->ulY + systemPLAYER_HEIGHT; y++) {
+        for(int x = pxPlayer->ulX; x < pxPlayer->ulX + systemPLAYER_WIDTH; x++) {
+            vFrameBufferSetPixel(x, y, 1);
+        }
+    }
+}
+
+inline static void prvSystemDisplayDrawBall(const Ball_t *pxBall) {
+    for(int y = pxBall->ulY; y < pxBall->ulY + systemBALL_HEIGHT; y++) {
+        for(int x = pxBall->ulX; x < pxBall->ulX + systemBALL_WIDTH; x++) {
+            vFrameBufferSetPixel(x, y, 1);
+        }
+    }
 }

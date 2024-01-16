@@ -5,6 +5,7 @@
 #include "task.h"
 #include "queue.h"
 #include "semphr.h"
+#include "timers.h"
 
 #include "system.h"
 
@@ -48,8 +49,14 @@ SemaphoreHandle_t xSemaphoreButton;
 PlayerPad_t xPlayerPad1;
 
 PlayerPad_t xPlayerPad2;
+
+Player_t xPlayer01;
+
+Player_t xPlayer02;
+
+Ball_t xBall;
             
-/* Tasks Procecudures */
+/* Tasks Procedures */
 
 void vLedTask(void *pvParameters);
             
@@ -58,6 +65,10 @@ void vButtonTask(void *pvParameters);
 void vDisplayPlayerTask(void *pvParameters);
             
 void vDisplayBallTask(void *pvParameters);
+
+/* Timers Callbacks */
+
+void vRenderTimerCallback(TimerHandle_t xTimer);
 
 /* Private Interrupt Handlers */
 
@@ -70,17 +81,25 @@ int main(void) {
 
     vSystemSetLed(eGreenLed);
 
+    vSystemGetPlayerDefaultConfig(&xPlayer01, ePlayer1);
+    vSystemGetPlayerDefaultConfig(&xPlayer02, ePlayer2);
+    vSystemGetBallDefaultConfig(&xBall);
+
     xQueueLed = xQueueCreate(1, sizeof(QueueLedItem_t));
     xQueuePlayer = xQueueCreate(2, sizeof(QueuePlayerItem_t));
 
     xSemaphoreButton = xSemaphoreCreateBinary();
 
-    xTaskCreate(vLedTask, "TaskLed", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    xTaskCreate(vButtonTask, "TaskButton", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    xTaskCreate(vDisplayPlayerTask, "TaskPlayer", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    TimerHandle_t xTimerDisplayRender = xTimerCreate("TimerDisplayRender", pdMS_TO_TICKS(systemDISPLAY_FRAME_DURATION), pdTRUE, NULL, vRenderTimerCallback);
+
+    // xTaskCreate(vLedTask, "TaskLed", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(vButtonTask, "TaskButton", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+    xTaskCreate(vDisplayPlayerTask, "TaskPlayer", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
     // xTaskCreate(vDisplayBallTask, "TaskBall", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
     portENABLE_INTERRUPTS();
+
+    xTimerStart(xTimerDisplayRender, 0);
 
     vTaskStartScheduler();
     
@@ -130,13 +149,7 @@ void vButtonTask(void *pvParameters) {
         }
 
         for(uint32_t ulPad = 0; ulPad < systemNUMBER_PLAYERS; ulPad++) {
-            if(ulPad == ePlayer1) {
-                vSystemSetLed(eBlueLed);
-            }
-            else {
-                vSystemSetLed(eYellowLed);
-            }
-
+            portENTER_CRITICAL();
             if(pxPlayersPads[ulPad]->eEvent == ePressed) {
                 xQueuePlayerItem.ePlayer = ulPad;
                 if(pxPlayersPads[ulPad]->eButton == eGreenButton || pxPlayersPads[ulPad]->eButton == eRedButton) {
@@ -147,13 +160,7 @@ void vButtonTask(void *pvParameters) {
                 }
                 xQueueSendToBack(xQueuePlayer, (void *) &xQueuePlayerItem, portMAX_DELAY);
             }
-
-            if(ulPad == ePlayer1) {
-                vSystemClearLed(eBlueLed);
-            }
-            else {
-                vSystemClearLed(eYellowLed);
-            }
+            portEXIT_CRITICAL();
         }
 
         /* Software Debouncing */
@@ -162,24 +169,12 @@ void vButtonTask(void *pvParameters) {
 }  
 
 void vDisplayPlayerTask(void *pvParameters) {
-    TickType_t xLastWakeTick = xTaskGetTickCount();
-
-    Player_t xPlayer01;
-    Player_t xPlayer02;
-
-    vSystemGetPlayerDefaultConfig(&xPlayer01, ePlayer1);
-    vSystemGetPlayerDefaultConfig(&xPlayer02, ePlayer2);
-
     QueuePlayerItem_t xQueuePlayerItem;
 
     while(1) {
-        vTaskDelayUntil(&xLastWakeTick, pdMS_TO_TICKS(16));
-
-        vSystemDisplayDrawPlayer(&xPlayer01);
-        vSystemDisplayDrawPlayer(&xPlayer02);
-
         xQueueReceive(xQueuePlayer, (void *) &xQueuePlayerItem, portMAX_DELAY);
 
+        portENTER_CRITICAL();
         switch(xQueuePlayerItem.ePlayer) {
             case ePlayer1:
                 vSystemUpdatePlayerPosition(&xPlayer01, xQueuePlayerItem.eMovement);
@@ -188,19 +183,24 @@ void vDisplayPlayerTask(void *pvParameters) {
                 vSystemUpdatePlayerPosition(&xPlayer02, xQueuePlayerItem.eMovement);
                 break;
         }
+        portEXIT_CRITICAL();
     }
 }
             
 void vDisplayBallTask(void *pvParameters) {
     TickType_t xLastWakeTick = xTaskGetTickCount();
 
-    Ball_t xBall;
-    vSystemGetBallDefaultConfig(&xBall);
-
     while(1) {
-        vSystemDisplayDrawBall(&xBall);
         vTaskDelayUntil(&xLastWakeTick, pdMS_TO_TICKS(20));
     }
+}
+
+/* Timers Callbacks */
+
+void vRenderTimerCallback(TimerHandle_t xTimer) {
+    portENTER_CRITICAL();
+    vSystemDisplayUpdateFrame(&xPlayer01, &xPlayer02, &xBall);
+    portEXIT_CRITICAL();
 }
 
 /* Private Interrupt Handlers */
@@ -215,6 +215,8 @@ BaseType_t prvButtonInterruptHandler(Button eButton) {
         pxPlayerPad = &xPlayerPad2;
     }
 
+    UBaseType_t uxSavedInterruptStatus = taskENTER_CRITICAL_FROM_ISR();
+
     pxPlayerPad->eButton = eButton;
 
 #ifdef systemSIMULATOR_EXECUTION
@@ -222,6 +224,8 @@ BaseType_t prvButtonInterruptHandler(Button eButton) {
 #else
     pxPlayerPad->eEvent = eSystemCheckButtonEvent(eButton); 
 #endif
+
+    taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
