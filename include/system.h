@@ -2,13 +2,12 @@
 #define SYSTEM_H
 
 #include <stdint.h>
-#include <stdbool.h>
 
 /* System Macros */
 
-#define systemNUMBER_PLAYERS            2
-#define systemDISPLAY_FRAME_PER_SECOND  60
-#define systemDISPLAY_FRAME_DURATION    16
+#define systemNUMBER_PLAYERS                ( 2 )
+#define systemDISPLAY_FRAMES_PER_SECOND     ( 60 ) 
+#define systemDISPLAY_FRAME_DURATION_MS     ( 1000/systemDISPLAY_FRAMES_PER_SECOND )
 
 /* System Enums */
 
@@ -60,8 +59,10 @@ typedef struct Player_t {
 } Player_t;
 
 typedef struct Ball_t {
-    uint32_t ulX;
-    uint32_t ulY;
+    int32_t ulX;
+    int32_t ulY;
+    int32_t ulVelocityX;
+    int32_t ulVelocityY;
 } Ball_t;
 
 /* Initialization Interface */
@@ -75,6 +76,8 @@ void vSystemGetPlayerDefaultConfig(Player_t *pxPlayer, PlayerId eId);
 void vSystemUpdatePlayerPosition(Player_t *pxPlayer, PlayerMovement eMovement);
 
 void vSystemGetBallDefaultConfig(Ball_t *pxBall);
+
+void vSystemUpdateBallPosition(Ball_t *pxBall, const Player_t *pxPlayer01, const Player_t *pxPlayer02);
 
 /* Display Interface */
 

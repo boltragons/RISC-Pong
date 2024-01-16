@@ -63,8 +63,6 @@ void vLedTask(void *pvParameters);
 void vButtonTask(void *pvParameters);
             
 void vDisplayPlayerTask(void *pvParameters);
-            
-void vDisplayBallTask(void *pvParameters);
 
 /* Timers Callbacks */
 
@@ -90,12 +88,11 @@ int main(void) {
 
     xSemaphoreButton = xSemaphoreCreateBinary();
 
-    TimerHandle_t xTimerDisplayRender = xTimerCreate("TimerDisplayRender", pdMS_TO_TICKS(systemDISPLAY_FRAME_DURATION), pdTRUE, NULL, vRenderTimerCallback);
+    TimerHandle_t xTimerDisplayRender = xTimerCreate("TimerDisplayRender", pdMS_TO_TICKS(systemDISPLAY_FRAME_DURATION_MS), pdTRUE, NULL, vRenderTimerCallback);
 
     // xTaskCreate(vLedTask, "TaskLed", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
     xTaskCreate(vButtonTask, "TaskButton", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
     xTaskCreate(vDisplayPlayerTask, "TaskPlayer", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    // xTaskCreate(vDisplayBallTask, "TaskBall", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
 
     portENABLE_INTERRUPTS();
 
@@ -186,20 +183,13 @@ void vDisplayPlayerTask(void *pvParameters) {
         portEXIT_CRITICAL();
     }
 }
-            
-void vDisplayBallTask(void *pvParameters) {
-    TickType_t xLastWakeTick = xTaskGetTickCount();
-
-    while(1) {
-        vTaskDelayUntil(&xLastWakeTick, pdMS_TO_TICKS(20));
-    }
-}
 
 /* Timers Callbacks */
 
 void vRenderTimerCallback(TimerHandle_t xTimer) {
     portENTER_CRITICAL();
     vSystemDisplayUpdateFrame(&xPlayer01, &xPlayer02, &xBall);
+    vSystemUpdateBallPosition(&xBall, &xPlayer01, &xPlayer02);
     portEXIT_CRITICAL();
 }
 

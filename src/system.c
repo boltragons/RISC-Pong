@@ -1,5 +1,7 @@
 #include "system.h"
 
+#include <stdbool.h>
+
 /* Board Support Package (BSP) */
 #include "platform.h"
 #include "wrap.h"
@@ -15,8 +17,8 @@
 
 /* System Macros */
 
-#define systemDISPLAY_HEIGHT       64
-#define systemDISPLAY_WIDTH        128
+#define systemDISPLAY_HEIGHT       ( 64 )
+#define systemDISPLAY_WIDTH        ( 128 )
 
 #define systemPLAYER_HEIGHT        (systemDISPLAY_HEIGHT/5)
 #define systemPLAYER_WIDTH         2 
@@ -26,11 +28,13 @@
 #define systemPLAYER_1_DEFAULT_X   0
 #define systemPLAYER_2_DEFAULT_X   (systemDISPLAY_WIDTH - systemPLAYER_WIDTH)
 
-#define systemBALL_HEIGHT          2
-#define systemBALL_WIDTH           2 
+#define systemBALL_HEIGHT          3
+#define systemBALL_WIDTH           3
 
-#define systemBALL_DEFAULT_Y       systemDISPLAY_HEIGHT/2
-#define systemBALL_DEFAULT_X       systemDISPLAY_WIDTH/2
+#define systemBALL_DEFAULT_Y       ((systemDISPLAY_HEIGHT - systemBALL_HEIGHT)/2)
+#define systemBALL_DEFAULT_X       ((systemDISPLAY_WIDTH - systemBALL_WIDTH)/2)
+
+#define systemBALL_DEFAULT_SPEED   250
 
 #define systemBUTTON_GREEN_PIN     18
 #define systemBUTTON_BLUE_PIN      19
@@ -61,6 +65,8 @@ static void prvSystemDisplayInit(void);
 inline static void prvSystemDisplayDrawPlayer(const Player_t *pxPlayer);
 
 inline static void prvSystemDisplayDrawBall(const Ball_t *pxBall);
+
+inline static bool prvSystemCheckWallColisionDetection(Ball_t *pxBall);
 
 /* Global Functions */
 
@@ -95,6 +101,15 @@ void vSystemUpdatePlayerPosition(Player_t *pxPlayer, PlayerMovement eMovement) {
 void vSystemGetBallDefaultConfig(Ball_t *pxBall) {
     pxBall->ulY = systemBALL_DEFAULT_Y;
     pxBall->ulX = systemBALL_DEFAULT_X;
+    pxBall->ulVelocityX = systemBALL_DEFAULT_SPEED;
+    pxBall->ulVelocityY = systemBALL_DEFAULT_SPEED;
+}
+
+void vSystemUpdateBallPosition(Ball_t *pxBall, const Player_t *pxPlayer01, const Player_t *pxPlayer02) {
+    pxBall->ulX += pxBall->ulVelocityX / systemDISPLAY_FRAMES_PER_SECOND;
+    pxBall->ulY += pxBall->ulVelocityY / systemDISPLAY_FRAMES_PER_SECOND;
+
+    prvSystemCheckWallColisionDetection(pxBall);
 }
 
 void vSystemDisplayUpdateFrame(const Player_t *pxPlayer01, const Player_t *pxPlayer02, const Ball_t *pxBall) {
@@ -221,4 +236,31 @@ inline static void prvSystemDisplayDrawBall(const Ball_t *pxBall) {
             vFrameBufferSetPixel(x, y, 1);
         }
     }
+}
+
+inline static bool prvSystemCheckWallColisionDetection(Ball_t *pxBall) {
+    bool xColisionDetected = false;
+
+    if(pxBall->ulX <= 0) {
+        pxBall->ulX = 0;
+        pxBall->ulVelocityX = -pxBall->ulVelocityX;
+        xColisionDetected = true;
+    }
+    if(pxBall->ulY <= 0) {
+        pxBall->ulY = 0;
+        pxBall->ulVelocityY = -pxBall->ulVelocityY;
+        xColisionDetected = true;
+    }
+    if(pxBall->ulX >= (systemDISPLAY_WIDTH - systemBALL_WIDTH)) {
+        pxBall->ulX = (systemDISPLAY_WIDTH - systemBALL_WIDTH);
+        pxBall->ulVelocityX = -pxBall->ulVelocityX;
+        xColisionDetected = true;
+    }
+    if(pxBall->ulY >= (systemDISPLAY_HEIGHT - systemBALL_HEIGHT)) {
+        pxBall->ulY = (systemDISPLAY_HEIGHT - systemBALL_HEIGHT);
+        pxBall->ulVelocityY = -pxBall->ulVelocityY;
+        xColisionDetected = true;
+    }
+
+    return xColisionDetected;
 }
