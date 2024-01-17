@@ -285,13 +285,15 @@ inline static PlayerId prvSystemCheckWallColisionDetection(Ball_t *pxBall) {
 inline static bool prvSystemCheckPlayerColisionDetection(Ball_t *pxBall, const Player_t *pxPlayer01, const Player_t *pxPlayer02) {
     bool xColisionDetected = false;
 
-    if((pxBall->ulX <= pxPlayer01->ulX) && (pxBall->ulY >= pxPlayer01->ulY && pxBall->ulY <= (pxPlayer01->ulY + systemPLAYER_HEIGHT))) {
-        pxBall->ulX = pxPlayer01->ulX;
+    if((pxBall->ulX <= pxPlayer01->ulX + systemPLAYER_WIDTH)
+            && ((pxBall->ulY + systemBALL_HEIGHT - 1 >= pxPlayer01->ulY) && (pxBall->ulY + systemBALL_HEIGHT - 1 <= pxPlayer01->ulY + systemPLAYER_HEIGHT))) {
+        pxBall->ulX = pxPlayer01->ulX + systemPLAYER_WIDTH;
         pxBall->ulVelocityX = -pxBall->ulVelocityX;
         xColisionDetected = true;
     }
-    else if((pxBall->ulX >= pxPlayer02->ulX) && (pxBall->ulY >= pxPlayer02->ulY && pxBall->ulY <= (pxPlayer02->ulY + systemPLAYER_HEIGHT))) {
-        pxBall->ulX = pxPlayer02->ulX;
+    else if((pxBall->ulX + systemBALL_WIDTH >= pxPlayer02->ulX)
+            && ((pxBall->ulY + systemBALL_HEIGHT - 1 >= pxPlayer02->ulY) && (pxBall->ulY + systemBALL_HEIGHT - 1 <= pxPlayer02->ulY + systemPLAYER_HEIGHT))) {
+        pxBall->ulX = pxPlayer02->ulX - systemBALL_WIDTH;
         pxBall->ulVelocityX = -pxBall->ulVelocityX;
         xColisionDetected = true;
     }
