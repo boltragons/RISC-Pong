@@ -4,10 +4,17 @@
 #include <stdint.h>
 
 void vFrameBufferInit();
+
 void vFrameBufferFlush();
 
-void vFrameBufferSetPixel(uint8_t x, uint8_t y, uint8_t p);
-void vFrameBufferSetPixelDirect(uint8_t x, uint8_t y, uint8_t p);
-uint8_t fb_get_pixel(uint8_t x, uint8_t y);
+uint8_t ucFrameBufferSetChar(uint8_t x, uint8_t y, uint8_t ucChar);
+
+uint8_t ucFrameBufferSetString(uint8_t x, uint8_t y, const char *pcString);
+
+void vFrameBufferSetPixel(uint8_t x, uint8_t y);
+
+void vFrameBufferSetPixelDirect(uint8_t x, uint8_t y);
+
+uint8_t ucFrameBufferGetPixel(uint8_t x, uint8_t y);
 
 #endif

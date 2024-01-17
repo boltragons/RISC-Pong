@@ -6,8 +6,10 @@
  *      Author: dwd
  */
 #include "framebuffer.h"
+
 #include <string.h>
 
+#include "font.h"
 #include "display.h"
 
 uint8_t ucFrameBuffer[displaySCREEN_WIDTH][displaySCREEN_HEIGHT/8];
@@ -27,21 +29,34 @@ void vFrameBufferFlush() {
 	}
 }
 
-void vFrameBufferSetPixel(uint8_t x, uint8_t y, uint8_t p) {
-	if(p)
-		ucFrameBuffer[x][y/8] |= 1 << y%8;
-	else
-		ucFrameBuffer[x][y/8] &= ~(1 << y%8);
+uint8_t ucFrameBufferSetChar(uint8_t x, uint8_t y, uint8_t ucChar){
+	for(int i = 0; i < fontWIDTH; i++) {
+		ucFrameBuffer[x++][y/8] |= ucFonts[ucChar][i] << y%8;
+    }
+	ucFrameBuffer[x++][y/8] &= ~(1 << y%8);
+	return x;
 }
 
-void vFrameBufferSetPixelDirect(uint8_t x, uint8_t y, uint8_t p) {
-	vFrameBufferSetPixel(x, y, p);
+uint8_t ucFrameBufferSetString(uint8_t x, uint8_t y, const char *pcString) {
+	uint8_t ucLastX = x;
+	for(int i = 0; i < strlen(pcString); i++) {
+		ucLastX = ucFrameBufferSetChar(ucLastX, y, pcString[i]);
+	}
+	return ucLastX;
+}
+
+void vFrameBufferSetPixel(uint8_t x, uint8_t y) {
+	ucFrameBuffer[x][y/8] |= 1 << y%8;
+}
+
+void vFrameBufferSetPixelDirect(uint8_t x, uint8_t y) {
+	vFrameBufferSetPixel(x, y);
 	set_xrow(x, y/8);
 	spi(ucFrameBuffer[x][y/8]);
 }
 
 
-uint8_t fb_get_pixel(uint8_t x, uint8_t y) {
+uint8_t ucFrameBufferGetPixel(uint8_t x, uint8_t y) {
 	return ucFrameBuffer[x][y/8] & (1 << y%8);
 }
 

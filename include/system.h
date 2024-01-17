@@ -46,6 +46,7 @@ typedef enum PlayerMovement {
 } PlayerMovement;
 
 typedef enum PlayerId {
+    eNonePlayer = -1,
     ePlayer1,
     ePlayer2
 } PlayerId;
@@ -56,6 +57,8 @@ typedef struct Player_t {
     PlayerId eId;
     uint32_t ulX;
     uint32_t ulY;
+    uint32_t ulPoints;
+    char pcPointsString[4];
 } Player_t;
 
 typedef struct Ball_t {
@@ -77,7 +80,7 @@ void vSystemUpdatePlayerPosition(Player_t *pxPlayer, PlayerMovement eMovement);
 
 void vSystemGetBallDefaultConfig(Ball_t *pxBall);
 
-void vSystemUpdateBallPosition(Ball_t *pxBall, const Player_t *pxPlayer01, const Player_t *pxPlayer02);
+PlayerId vSystemUpdateBallPosition(Ball_t *pxBall, const Player_t *pxPlayer01, const Player_t *pxPlayer02);
 
 /* Display Interface */
 

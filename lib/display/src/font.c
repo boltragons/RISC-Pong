@@ -9,12 +9,7 @@
 #include "font.h"
 #include "display.h"
 
-#define fontWIDTH       6
-#define fontHEIGHT      1
-#define fontNUMBER      128
-#define fontCHAR_WIDTH  (fontWIDTH + 1)
-
-static const uint8_t font[fontNUMBER][fontWIDTH] = {
+const uint8_t ucFonts[fontNUMBER][fontWIDTH] = {
   {0x00, 0x7e, 0x7e, 0x7e, 0x00, 0x00},
   {0x10, 0x38, 0x7c, 0x3e, 0x1c, 0x08},
   {0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c},
@@ -165,7 +160,7 @@ void newline()
         spi(0);
     }
     /* Go back to row */
-    set_x(0);
+    vSetPositionX(0);
 }
 
 /* write a character to OLED screen.
@@ -189,7 +184,7 @@ void vFontPrintChar(uint8_t ch)
         ch = 0;
     }
     for (x=0; x<fontWIDTH; ++x) {
-        spi(font[ch][x]);
+        spi(ucFonts[ch][x]);
     }
     for (; x<fontCHAR_WIDTH; ++x) { /* Pad with empty columns if necessary */
         spi(0);

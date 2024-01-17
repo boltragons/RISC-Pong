@@ -30,7 +30,7 @@ void setContrast(uint8_t contrast);
 void fadeIn(uint64_t millis);
 void fadeOut(uint64_t millis);
 
-void set_x(unsigned col);
+void vSetPositionX(unsigned col);
 void set_row(unsigned row);
 void set_xrow(unsigned col, unsigned row);
 /** clear (visible portion of) screen, reset pointers */

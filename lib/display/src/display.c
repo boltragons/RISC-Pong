@@ -229,7 +229,7 @@ void vDisplayInit()
     setDisplayOn(1);
 }
 
-void set_x(unsigned col)
+void vSetPositionX(unsigned col)
 {
     mode_cmd();
     spi(0x00 | ((col+displaySCREEN_WIDTH_OFFSET) & 0xf));
