@@ -86,6 +86,8 @@ PlayerId vSystemUpdateBallPosition(Ball_t *pxBall, const Player_t *pxPlayer01, c
 
 void vSystemDisplayUpdateFrame(const Player_t *pxPlayer01, const Player_t *pxPlayer02, const Ball_t *pxBall);
 
+void vSystemDisplayMainScreen(void);
+
 /* LED Interface */
 
 void vSystemSetLed(Led eLed);

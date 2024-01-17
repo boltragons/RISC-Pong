@@ -70,36 +70,23 @@ void vRenderTimerCallback(TimerHandle_t xTimer);
 
 BaseType_t prvButtonInterruptHandler(Button eButton);
 
+/* Private Configuration Functions */
+
+static inline void prvSystemConfig(void);
+
+static inline void prvKernelConfig(void);
+
+static inline void prvKernelStart(void);
+
 /* Main Code */
 
 int main(void) {
-    vSystemInit();
+    prvSystemConfig();
 
-    vSystemSetLed(eGreenLed);
+    prvKernelConfig();
 
-    vSystemGetPlayerDefaultConfig(&xPlayer01, ePlayer1);
-    vSystemGetPlayerDefaultConfig(&xPlayer02, ePlayer2);
-    vSystemGetBallDefaultConfig(&xBall);
+    prvKernelStart();
 
-    xQueueScore = xQueueCreate(2, sizeof(QueueScoreItem_t));
-    xQueuePlayer = xQueueCreate(2, sizeof(QueuePlayerItem_t));
-
-    xSemaphoreButton = xSemaphoreCreateBinary();
-    xSemaphoreDisplay = xSemaphoreCreateBinary();
-
-    TimerHandle_t xTimerDisplayRender = xTimerCreate("TimerDisplayRender", pdMS_TO_TICKS(systemDISPLAY_FRAME_DURATION_MS), pdTRUE, NULL, vRenderTimerCallback);
-
-    xTaskCreate(vInputHandlingTask, "TaskButton", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    xTaskCreate(vUpdateScoreTask, "TaskScore", 2*configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    xTaskCreate(vUpdatePlayerPositionTask, "TaskPlayer", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    xTaskCreate(vUpdateDisplay, "TaskDisplay", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
-
-    portENABLE_INTERRUPTS();
-
-    xTimerStart(xTimerDisplayRender, 0);
-
-    vTaskStartScheduler();
-    
     while(1);
 }       
                   
@@ -272,4 +259,44 @@ void vAssertCalled(const char *pcFile, uint32_t ulLine) {
 	portDISABLE_INTERRUPTS();
     vSystemSetLed(eRedLed);
 	while(1); 
+}
+
+/* Private Configuration Functions */
+
+static inline void prvSystemConfig(void) {
+    vSystemGetPlayerDefaultConfig(&xPlayer01, ePlayer1);
+    vSystemGetPlayerDefaultConfig(&xPlayer02, ePlayer2);
+    vSystemGetBallDefaultConfig(&xBall);
+
+    vSystemInit();
+
+    vSystemSetLed(eGreenLed);
+
+    vSystemDisplayMainScreen();
+
+    while(!eSystemReadButton(eGreenButton) 
+        && !eSystemReadButton(eBlueButton) 
+        && !eSystemReadButton(eYellowButton) 
+        && !eSystemReadButton(eRedButton));
+}
+
+static inline void prvKernelConfig(void) {
+    xQueueScore = xQueueCreate(2, sizeof(QueueScoreItem_t));
+    xQueuePlayer = xQueueCreate(2, sizeof(QueuePlayerItem_t));
+
+    xSemaphoreButton = xSemaphoreCreateBinary();
+    xSemaphoreDisplay = xSemaphoreCreateBinary();
+
+    TimerHandle_t xTimerDisplayRender = xTimerCreate("TimerDisplayRender", pdMS_TO_TICKS(systemDISPLAY_FRAME_DURATION_MS), pdTRUE, NULL, vRenderTimerCallback);
+    xTimerStart(xTimerDisplayRender, 0);
+
+    xTaskCreate(vInputHandlingTask, "TaskButton", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    xTaskCreate(vUpdateScoreTask, "TaskScore", 2*configMINIMAL_STACK_SIZE, NULL, 2, NULL);
+    xTaskCreate(vUpdatePlayerPositionTask, "TaskPlayer", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
+    xTaskCreate(vUpdateDisplay, "TaskDisplay", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+}
+
+static inline void prvKernelStart(void) {
+    portENABLE_INTERRUPTS();
+    vTaskStartScheduler();
 }

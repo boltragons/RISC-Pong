@@ -37,10 +37,26 @@ uint8_t ucFrameBufferSetChar(uint8_t x, uint8_t y, uint8_t ucChar){
 	return x;
 }
 
+uint8_t ucFrameBufferSetCharInverted(uint8_t x, uint8_t y, uint8_t ucChar){
+	for(int i = 0; i < fontWIDTH; i++) {
+		ucFrameBuffer[x++][y/8] &= ~(ucFonts[ucChar][i] << y%8);
+    }
+	ucFrameBuffer[x++][y/8] |= (1 << y%8);
+	return x;
+}
+
 uint8_t ucFrameBufferSetString(uint8_t x, uint8_t y, const char *pcString) {
 	uint8_t ucLastX = x;
 	for(int i = 0; i < strlen(pcString); i++) {
 		ucLastX = ucFrameBufferSetChar(ucLastX, y, pcString[i]);
+	}
+	return ucLastX;
+}
+
+uint8_t ucFrameBufferSetStringInverted(uint8_t x, uint8_t y, const char *pcString) {
+	uint8_t ucLastX = x;
+	for(int i = 0; i < strlen(pcString); i++) {
+		ucLastX = ucFrameBufferSetCharInverted(ucLastX, y, pcString[i]);
 	}
 	return ucLastX;
 }

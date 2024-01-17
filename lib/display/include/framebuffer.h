@@ -9,7 +9,11 @@ void vFrameBufferFlush();
 
 uint8_t ucFrameBufferSetChar(uint8_t x, uint8_t y, uint8_t ucChar);
 
+uint8_t ucFrameBufferSetCharInverted(uint8_t x, uint8_t y, uint8_t ucChar);
+
 uint8_t ucFrameBufferSetString(uint8_t x, uint8_t y, const char *pcString);
+
+uint8_t ucFrameBufferSetStringInverted(uint8_t x, uint8_t y, const char *pcString);
 
 void vFrameBufferSetPixel(uint8_t x, uint8_t y);
 

@@ -134,6 +134,24 @@ void vSystemDisplayUpdateFrame(const Player_t *pxPlayer01, const Player_t *pxPla
     vFrameBufferFlush();
 }
 
+void vSystemDisplayMainScreen(void) {
+    static const char *pcMainTitle = "RISC-Pong";
+    const uint32_t ulMainTitleLength = strlen(pcMainTitle);
+
+    static const char *pcMainTitleStart = "Press ANY Button";
+    const uint32_t ulMainTitleStartLength = strlen(pcMainTitleStart);
+
+    vFrameBufferInit();
+    for(int y = 8; y < 32; y++) {
+        for(int x = displaySCREEN_WIDTH/2 - (ulMainTitleLength*fontCHAR_WIDTH)/2 - 10; x < displaySCREEN_WIDTH/2 + (ulMainTitleLength*fontCHAR_WIDTH)/2 + 10; x++) {
+            vFrameBufferSetPixel(x, y);
+        }
+    }
+    ucFrameBufferSetStringInverted(displaySCREEN_WIDTH/2 - (ulMainTitleLength*fontCHAR_WIDTH)/2, 16, pcMainTitle);
+    ucFrameBufferSetString(displaySCREEN_WIDTH/2 - (ulMainTitleStartLength*fontCHAR_WIDTH)/2, 48, pcMainTitleStart);
+    vFrameBufferFlush();
+}
+
 void vSystemSetLed(Led eLed) {
     vPinSetLevel(ulSystemLeds[eLed]);
 }
@@ -173,7 +191,6 @@ void vSystemEndInterruptHandling(uint32_t ulInterruptId) {
 }
 
 /* Private Functions */
-
 
 static void prvSystemMcuInit(void) {
     for(uint32_t ulMcuPin = 0; ulMcuPin < 32; ulMcuPin++) {
