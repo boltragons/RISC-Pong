@@ -2,12 +2,17 @@
 #define SYSTEM_H
 
 #include <stdint.h>
+#include <stdbool.h> 
 
 /* System Macros */
 
 #define systemNUMBER_PLAYERS                ( 2 )
 #define systemDISPLAY_FRAMES_PER_SECOND     ( 60 ) 
 #define systemDISPLAY_FRAME_DURATION_MS     ( 1000/systemDISPLAY_FRAMES_PER_SECOND )
+
+#define systemDEBOUNCING_TIME_MS            ( 20 )
+
+#define systemBALL_DEFAULT_SPEED            ( 200 )
 
 /* System Enums */
 
@@ -79,6 +84,8 @@ void vSystemGetPlayerDefaultConfig(Player_t *pxPlayer, PlayerId eId);
 void vSystemUpdatePlayerPosition(Player_t *pxPlayer, PlayerMovement eMovement);
 
 void vSystemGetBallDefaultConfig(Ball_t *pxBall);
+
+void vSystemSetBallPosition(Ball_t *pxBall, PlayerId ePlayerToStart, bool xBallGoesUpwards);
 
 PlayerId vSystemUpdateBallPosition(Ball_t *pxBall, const Player_t *pxPlayer01, const Player_t *pxPlayer02);
 

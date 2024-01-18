@@ -29,12 +29,21 @@ typedef struct PlayerPad_t {
     Button eButton;
     ButtonEvent eEvent;
 } PlayerPad_t;
+
+typedef enum GamePhase {
+    eInitalPhase,
+    eSelectionPhase,
+    eIntermediaryPhase,
+    ePlayPhase
+} GamePhase;
             
 /* Synchronization Handles */
 
 QueueHandle_t xQueuePlayer;
 
 QueueHandle_t xQueueScore;
+
+SemaphoreHandle_t xSemaphorePhase;
 
 SemaphoreHandle_t xSemaphoreButton;
 
@@ -51,10 +60,32 @@ Player_t xPlayer01;
 Player_t xPlayer02;
 
 Ball_t xBall;
+
+GamePhase eCurrentGamePhase;
+            
+/* Timers Handles */
+
+TimerHandle_t xTimerDisplayRender;
+
+TimerHandle_t xTimerSoftwareDebouncing;
+            
+/* Tasks Handles */
+
+TaskHandle_t xGamePhaseHandlingTaskHandle;
+
+TaskHandle_t xUpdateDisplayTaskHandle;
+
+TaskHandle_t xInputHandlingTaskHandle;
+
+TaskHandle_t xUpdateScoreTaskHandle;
+
+TaskHandle_t xUpdatePlayerPositionTaskHandle;
             
 /* Tasks Procedures */
             
-void vUpdateDisplay(void *pvParameters);
+void vGamePhaseHandlingTask(void *pvParameters);
+            
+void vUpdateDisplayTask(void *pvParameters);
             
 void vInputHandlingTask(void *pvParameters);
             
@@ -65,6 +96,8 @@ void vUpdatePlayerPositionTask(void *pvParameters);
 /* Timers Callbacks */
 
 void vRenderTimerCallback(TimerHandle_t xTimer);
+
+void vTimerSoftwareDebouncing(TimerHandle_t xTimer);
 
 /* Private Interrupt Handlers */
 
@@ -77,6 +110,8 @@ static inline void prvSystemConfig(void);
 static inline void prvKernelConfig(void);
 
 static inline void prvKernelStart(void);
+
+static inline void prvKernelResume(void);
 
 /* Main Code */
 
@@ -91,9 +126,47 @@ int main(void) {
 }       
                   
 /* Tasks Procecudures */
+
+void vGamePhaseHandlingTask(void *pvParameters) {
+    while(1) {
+        if(eCurrentGamePhase != eIntermediaryPhase) {
+            portDISABLE_INTERRUPTS();
+            xTimerStart(xTimerSoftwareDebouncing, 0);
+        }
+
+        portENTER_CRITICAL();
+        switch(eCurrentGamePhase) {
+        case eInitalPhase:
+            vSystemDisplayMainScreen();
+            eCurrentGamePhase = eSelectionPhase;
+            break;
+        case eSelectionPhase:
+            vSystemDisplaySelectionScreen();
+            eCurrentGamePhase = eIntermediaryPhase;
+            break;
+        case eIntermediaryPhase:
+            if(xPlayerPad1.eEvent == ePressed) {
+                vSystemSetBallPosition(&xBall, ePlayer1, (xPlayerPad1.eButton == eGreenButton));
+            }
+            else {
+                vSystemSetBallPosition(&xBall, ePlayer2, (xPlayerPad1.eButton == eRedButton));
+            }
+            prvKernelResume();
+            eCurrentGamePhase = ePlayPhase;
+            break;
+        default:
+            break;
+        }
+        portEXIT_CRITICAL();
+
+        xSemaphoreTake(xSemaphorePhase, portMAX_DELAY);
+    }
+}
         
-void vUpdateDisplay(void *pvParameters) {
+void vUpdateDisplayTask(void *pvParameters) {
     QueueScoreItem_t xQueueScoreItem;
+
+    vTaskSuspend(NULL);
 
     while(1) {
         xSemaphoreTake(xSemaphoreDisplay, portMAX_DELAY);
@@ -103,7 +176,8 @@ void vUpdateDisplay(void *pvParameters) {
         xQueueScoreItem.eWinner = vSystemUpdateBallPosition(&xBall, &xPlayer01, &xPlayer02);
 
         if(xQueueScoreItem.eWinner != eNonePlayer) {
-            vSystemGetBallDefaultConfig(&xBall);
+            TickType_t xCurrentTickCount = xTaskGetTickCount();
+            vSystemSetBallPosition(&xBall, !xQueueScoreItem.eWinner, (bool) (xCurrentTickCount % 2));
             xQueueSendToBack(xQueueScore, &xQueueScoreItem, 0);
         }
         portEXIT_CRITICAL();
@@ -117,6 +191,8 @@ void vInputHandlingTask(void *pvParameters) {
     xPlayerPad2.eEvent = eReleased;
 
     PlayerPad_t *pxPlayersPads[] = {&xPlayerPad1, &xPlayerPad2};
+
+    vTaskSuspend(NULL);
 
     while(1) {
         if(xPlayerPad1.eEvent == ePressed || xPlayerPad2.eEvent == ePressed) {
@@ -149,6 +225,8 @@ void vInputHandlingTask(void *pvParameters) {
 void vUpdateScoreTask(void *pvParameters) {
     QueueScoreItem_t QueueScoreItem;
 
+    vTaskSuspend(NULL);
+
     while(1) {
         xQueueReceive(xQueueScore, (void *) &QueueScoreItem, portMAX_DELAY);
 
@@ -171,6 +249,8 @@ void vUpdateScoreTask(void *pvParameters) {
 
 void vUpdatePlayerPositionTask(void *pvParameters) {
     QueuePlayerItem_t xQueuePlayerItem;
+
+    vTaskSuspend(NULL);
 
     while(1) {
         xQueueReceive(xQueuePlayer, (void *) &xQueuePlayerItem, portMAX_DELAY);
@@ -196,6 +276,10 @@ void vRenderTimerCallback(TimerHandle_t xTimer) {
     xSemaphoreGive(xSemaphoreDisplay);
 }
 
+void vTimerSoftwareDebouncing(TimerHandle_t xTimer) {
+    portENABLE_INTERRUPTS();
+}
+
 /* Private Interrupt Handlers */
 
 BaseType_t prvButtonInterruptHandler(Button eButton) {
@@ -218,11 +302,16 @@ BaseType_t prvButtonInterruptHandler(Button eButton) {
     pxPlayerPad->eEvent = eSystemCheckButtonEvent(eButton); 
 #endif
 
-    taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
-
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
 
-    xSemaphoreGiveFromISR(xSemaphoreButton, &xHigherPriorityTaskWoken);
+    if(eCurrentGamePhase == ePlayPhase) {
+        xSemaphoreGiveFromISR(xSemaphoreButton, &xHigherPriorityTaskWoken);
+    }
+    else if(eCurrentGamePhase != ePlayPhase && pxPlayerPad->eEvent == ePressed) {
+        xSemaphoreGiveFromISR(xSemaphorePhase, &xHigherPriorityTaskWoken);
+    }
+
+    taskEXIT_CRITICAL_FROM_ISR(uxSavedInterruptStatus);
 
     return xHigherPriorityTaskWoken;
 }
@@ -264,63 +353,87 @@ void vAssertCalled(const char *pcFile, uint32_t ulLine) {
 /* Private Configuration Functions */
 
 static inline void prvSystemConfig(void) {
+    eCurrentGamePhase = eInitalPhase;
+
     vSystemGetPlayerDefaultConfig(&xPlayer01, ePlayer1);
     vSystemGetPlayerDefaultConfig(&xPlayer02, ePlayer2);
-    vSystemGetBallDefaultConfig(&xBall);
 
     vSystemInit();
 
     vSystemSetLed(eGreenLed);
-
-    vSystemDisplayMainScreen();
-
-    while(!eSystemReadButton(eGreenButton) 
-        && !eSystemReadButton(eBlueButton) 
-        && !eSystemReadButton(eYellowButton) 
-        && !eSystemReadButton(eRedButton));
-
-    vSystemDisplaySelectionScreen();
-
-    /* Temporary Delay */
-    for(int i = 0; i < 10000; i++);
-
-    while(1) {
-        if(eSystemReadButton(eGreenButton)) {
-            xBall.ulVelocityY = -xBall.ulVelocityY;
-            xBall.ulVelocityX = -xBall.ulVelocityX;
-            break;
-        }
-        else if(eSystemReadButton(eBlueButton)) {
-            xBall.ulVelocityX = -xBall.ulVelocityX;
-            break;
-        }
-        else if(eSystemReadButton(eYellowButton)) {
-            break;
-        }
-        else if(eSystemReadButton(eRedButton)) {
-            xBall.ulVelocityY = -xBall.ulVelocityY;
-            break;
-        }
-    }
 }
 
 static inline void prvKernelConfig(void) {
     xQueueScore = xQueueCreate(2, sizeof(QueueScoreItem_t));
     xQueuePlayer = xQueueCreate(2, sizeof(QueuePlayerItem_t));
 
+    xSemaphorePhase = xSemaphoreCreateBinary();
     xSemaphoreButton = xSemaphoreCreateBinary();
     xSemaphoreDisplay = xSemaphoreCreateBinary();
 
-    TimerHandle_t xTimerDisplayRender = xTimerCreate("TimerDisplayRender", pdMS_TO_TICKS(systemDISPLAY_FRAME_DURATION_MS), pdTRUE, NULL, vRenderTimerCallback);
-    xTimerStart(xTimerDisplayRender, 0);
+    xTimerDisplayRender = xTimerCreate(
+            "TimerDisplayRender", 
+            pdMS_TO_TICKS(systemDISPLAY_FRAME_DURATION_MS), 
+            pdTRUE, 
+            NULL,
+            vRenderTimerCallback
+    );
+    xTimerSoftwareDebouncing = xTimerCreate(
+            "TimerSoftwareDebouncing", 
+            pdMS_TO_TICKS(systemDEBOUNCING_TIME_MS), 
+            pdFALSE, 
+            NULL,
+            vTimerSoftwareDebouncing
+    );
 
-    xTaskCreate(vInputHandlingTask, "TaskButton", configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    xTaskCreate(vUpdateScoreTask, "TaskScore", 2*configMINIMAL_STACK_SIZE, NULL, 2, NULL);
-    xTaskCreate(vUpdatePlayerPositionTask, "TaskPlayer", configMINIMAL_STACK_SIZE, NULL, 1, NULL);
-    xTaskCreate(vUpdateDisplay, "TaskDisplay", configMINIMAL_STACK_SIZE, NULL, 3, NULL);
+    xTaskCreate(
+            vGamePhaseHandlingTask,
+            "TaskPhase",
+            configMINIMAL_STACK_SIZE,
+            NULL,
+            3,
+            &xGamePhaseHandlingTaskHandle
+    );
+    xTaskCreate(
+            vInputHandlingTask,
+            "TaskButton",
+            configMINIMAL_STACK_SIZE,
+            NULL,
+            2,
+            &xInputHandlingTaskHandle
+    );
+    xTaskCreate(vUpdateScoreTask,
+            "TaskScore",
+            2*configMINIMAL_STACK_SIZE,
+            NULL,
+            2,
+            &xUpdateScoreTaskHandle
+    );
+    xTaskCreate(vUpdatePlayerPositionTask,
+            "TaskPlayer",
+            configMINIMAL_STACK_SIZE,
+            NULL,
+            1,
+            &xUpdatePlayerPositionTaskHandle
+    );
+    xTaskCreate(vUpdateDisplayTask,
+            "TaskDisplay",
+            configMINIMAL_STACK_SIZE,
+            NULL,
+            3,
+            &xUpdateDisplayTaskHandle
+    );
 }
 
 static inline void prvKernelStart(void) {
     portENABLE_INTERRUPTS();
     vTaskStartScheduler();
+}
+
+static inline void prvKernelResume(void) {
+    xTimerStart(xTimerDisplayRender, 0);
+    vTaskResume(xUpdateDisplayTaskHandle);
+    vTaskResume(xInputHandlingTaskHandle);
+    vTaskResume(xUpdateScoreTaskHandle);
+    vTaskResume(xUpdatePlayerPositionTaskHandle);
 }

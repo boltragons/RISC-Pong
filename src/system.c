@@ -31,13 +31,11 @@
 #define systemPLAYER_1_DEFAULT_X   (systemPLAYER_OFFSET)
 #define systemPLAYER_2_DEFAULT_X   (systemDISPLAY_WIDTH - systemPLAYER_WIDTH - systemPLAYER_OFFSET)
 
-#define systemBALL_HEIGHT          3
-#define systemBALL_WIDTH           3
+#define systemBALL_HEIGHT          2
+#define systemBALL_WIDTH           2
 
 #define systemBALL_DEFAULT_Y       ((systemDISPLAY_HEIGHT - systemBALL_HEIGHT)/2)
 #define systemBALL_DEFAULT_X       ((systemDISPLAY_WIDTH - systemBALL_WIDTH)/2)
-
-#define systemBALL_DEFAULT_SPEED   250
 
 #define systemBUTTON_GREEN_PIN     18
 #define systemBUTTON_BLUE_PIN      19
@@ -112,6 +110,13 @@ void vSystemGetBallDefaultConfig(Ball_t *pxBall) {
     pxBall->ulX = systemBALL_DEFAULT_X;
     pxBall->ulVelocityX = systemBALL_DEFAULT_SPEED;
     pxBall->ulVelocityY = systemBALL_DEFAULT_SPEED;
+}
+
+void vSystemSetBallPosition(Ball_t *pxBall, PlayerId ePlayerToStart, bool xBallGoesUpwards) {
+    pxBall->ulY = systemBALL_DEFAULT_Y;
+    pxBall->ulX = systemBALL_DEFAULT_X;
+    pxBall->ulVelocityX = (ePlayerToStart == ePlayer1)? -systemBALL_DEFAULT_SPEED : systemBALL_DEFAULT_SPEED;
+    pxBall->ulVelocityY = (xBallGoesUpwards)? -systemBALL_DEFAULT_SPEED : systemBALL_DEFAULT_SPEED;
 }
 
 PlayerId vSystemUpdateBallPosition(Ball_t *pxBall, const Player_t *pxPlayer01, const Player_t *pxPlayer02) {
