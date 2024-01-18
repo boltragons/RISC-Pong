@@ -33,8 +33,9 @@ typedef struct PlayerPad_t {
 typedef enum GamePhase {
     eInitalPhase,
     eSelectionPhase,
-    eIntermediaryPhase,
-    ePlayPhase
+    eStartPhase,
+    ePlayPhase,
+    eEndPhase
 } GamePhase;
             
 /* Synchronization Handles */
@@ -97,7 +98,7 @@ void vUpdatePlayerPositionTask(void *pvParameters);
 
 void vRenderTimerCallback(TimerHandle_t xTimer);
 
-void vTimerSoftwareDebouncing(TimerHandle_t xTimer);
+void vSoftwareDebouncingTimerCallback(TimerHandle_t xTimer);
 
 /* Private Interrupt Handlers */
 
@@ -112,6 +113,8 @@ static inline void prvKernelConfig(void);
 static inline void prvKernelStart(void);
 
 static inline void prvKernelResume(void);
+
+static inline void prvKernelPause(void);
 
 /* Main Code */
 
@@ -129,12 +132,12 @@ int main(void) {
 
 void vGamePhaseHandlingTask(void *pvParameters) {
     while(1) {
-        if(eCurrentGamePhase != eIntermediaryPhase) {
+        portENTER_CRITICAL();
+        if(eCurrentGamePhase != eStartPhase) {
             portDISABLE_INTERRUPTS();
             xTimerStart(xTimerSoftwareDebouncing, 0);
         }
 
-        portENTER_CRITICAL();
         switch(eCurrentGamePhase) {
         case eInitalPhase:
             vSystemDisplayMainScreen();
@@ -142,9 +145,11 @@ void vGamePhaseHandlingTask(void *pvParameters) {
             break;
         case eSelectionPhase:
             vSystemDisplaySelectionScreen();
-            eCurrentGamePhase = eIntermediaryPhase;
+            vSystemGetPlayerDefaultConfig(&xPlayer01, ePlayer1);
+            vSystemGetPlayerDefaultConfig(&xPlayer02, ePlayer2);
+            eCurrentGamePhase = eStartPhase;
             break;
-        case eIntermediaryPhase:
+        case eStartPhase:
             if(xPlayerPad1.eEvent == ePressed) {
                 vSystemSetBallPosition(&xBall, ePlayer1, (xPlayerPad1.eButton == eGreenButton));
             }
@@ -153,6 +158,16 @@ void vGamePhaseHandlingTask(void *pvParameters) {
             }
             prvKernelResume();
             eCurrentGamePhase = ePlayPhase;
+            break;
+        case eEndPhase:
+            prvKernelPause();
+            if(xPlayer01.ucWins > xPlayer02.ucWins) {
+                vSystemDisplayGameOverScreen(ePlayer1);
+            }
+            else {
+                vSystemDisplayGameOverScreen(ePlayer2);
+            }
+            eCurrentGamePhase = eInitalPhase;
             break;
         default:
             break;
@@ -233,12 +248,30 @@ void vUpdateScoreTask(void *pvParameters) {
         portENTER_CRITICAL();
         switch(QueueScoreItem.eWinner) {
         case ePlayer1:
-            xPlayer01.ulPoints++;
-            sprintf(xPlayer01.pcPointsString, "%03ld", xPlayer01.ulPoints);
+            xPlayer01.ucPoints++;
+            if(xPlayer01.ucPoints == systemPLAYER_POINTS_TO_WIN) {
+                xPlayer01.ucPoints = 0;
+                xPlayer01.ucWins++;
+
+                if(xPlayer01.ucWins == systemMINIMUM_OF_VICTORIES) {
+                    eCurrentGamePhase = eEndPhase;
+                    xSemaphoreGive(xSemaphorePhase);
+                }
+            }
+            sprintf(xPlayer01.pcPointsString, "%02d", xPlayer01.ucPoints);
             break;
         case ePlayer2:
-            xPlayer02.ulPoints++;
-            sprintf(xPlayer02.pcPointsString, "%03ld", xPlayer02.ulPoints);
+            xPlayer02.ucPoints++;
+            if(xPlayer02.ucPoints == systemPLAYER_POINTS_TO_WIN) {
+                xPlayer02.ucPoints = 0;
+                xPlayer02.ucWins++;
+
+                if(xPlayer02.ucWins == systemMINIMUM_OF_VICTORIES) {
+                    eCurrentGamePhase = eEndPhase;
+                    xSemaphoreGive(xSemaphorePhase);
+                }
+            }
+            sprintf(xPlayer02.pcPointsString, "%02d", xPlayer02.ucPoints);
             break;
         default:
             break;
@@ -276,7 +309,7 @@ void vRenderTimerCallback(TimerHandle_t xTimer) {
     xSemaphoreGive(xSemaphoreDisplay);
 }
 
-void vTimerSoftwareDebouncing(TimerHandle_t xTimer) {
+void vSoftwareDebouncingTimerCallback(TimerHandle_t xTimer) {
     portENABLE_INTERRUPTS();
 }
 
@@ -355,9 +388,6 @@ void vAssertCalled(const char *pcFile, uint32_t ulLine) {
 static inline void prvSystemConfig(void) {
     eCurrentGamePhase = eInitalPhase;
 
-    vSystemGetPlayerDefaultConfig(&xPlayer01, ePlayer1);
-    vSystemGetPlayerDefaultConfig(&xPlayer02, ePlayer2);
-
     vSystemInit();
 
     vSystemSetLed(eGreenLed);
@@ -383,7 +413,7 @@ static inline void prvKernelConfig(void) {
             pdMS_TO_TICKS(systemDEBOUNCING_TIME_MS), 
             pdFALSE, 
             NULL,
-            vTimerSoftwareDebouncing
+            vSoftwareDebouncingTimerCallback
     );
 
     xTaskCreate(
@@ -436,4 +466,12 @@ static inline void prvKernelResume(void) {
     vTaskResume(xInputHandlingTaskHandle);
     vTaskResume(xUpdateScoreTaskHandle);
     vTaskResume(xUpdatePlayerPositionTaskHandle);
+}
+
+static inline void prvKernelPause(void) {
+    xTimerStop(xTimerDisplayRender, 0);
+    vTaskSuspend(xUpdateDisplayTaskHandle);
+    vTaskSuspend(xInputHandlingTaskHandle);
+    vTaskSuspend(xUpdateScoreTaskHandle);
+    vTaskSuspend(xUpdatePlayerPositionTaskHandle);
 }

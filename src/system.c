@@ -37,6 +37,9 @@
 #define systemBALL_DEFAULT_Y       ((systemDISPLAY_HEIGHT - systemBALL_HEIGHT)/2)
 #define systemBALL_DEFAULT_X       ((systemDISPLAY_WIDTH - systemBALL_WIDTH)/2)
 
+#define systemCROSS_WIDTH          (fontCHAR_WIDTH + 2)
+#define systemCROSS_HEIGHT         (framebufferCHAR_HEIGHT)
+
 #define systemBUTTON_GREEN_PIN     18
 #define systemBUTTON_BLUE_PIN      19
 #define systemBUTTON_YELLOW_PIN    20
@@ -65,6 +68,8 @@ static void prvSystemDisplayInit(void);
 
 inline static void prvSystemDisplayDrawLine(void);
 
+inline static void prvSystemDisplayDrawCrosses(uint8_t ucX, uint8_t ucNumberCrosses);
+
 inline static void prvSystemDisplayDrawPlayer(const Player_t *pxPlayer);
 
 inline static void prvSystemDisplayDrawBall(const Ball_t *pxBall);
@@ -86,8 +91,9 @@ void vSystemGetPlayerDefaultConfig(Player_t *pxPlayer, PlayerId eId) {
     pxPlayer->eId = eId;
     pxPlayer->ulY = systemPLAYER_DEFAULT_Y;
     pxPlayer->ulX = (eId == ePlayer1)? systemPLAYER_1_DEFAULT_X : systemPLAYER_2_DEFAULT_X;
-    pxPlayer->ulPoints = 0;
-    strcpy(pxPlayer->pcPointsString, "000");
+    pxPlayer->ucPoints = 0;
+    pxPlayer->ucWins = 0;
+    strcpy(pxPlayer->pcPointsString, "00");
 }
 
 void vSystemUpdatePlayerPosition(Player_t *pxPlayer, PlayerMovement eMovement) {
@@ -202,6 +208,35 @@ void vSystemDisplaySelectionScreen(void) {
     vFrameBufferFlush();
 }
 
+void vSystemDisplayGameOverScreen(PlayerId eWinner) {
+    static const char *pcPlayer1Wins = "Player 1 Wins!!";
+    static const char *pcPlayer2Wins = "Player 2 Wins!!";
+    static const uint32_t ulPlayerWinsLength = 15;
+
+    vFrameBufferInit();
+    vFrameBufferSetRectangle(
+        framebufferCENTRALIZE_STRING(ulPlayerWinsLength) - 10, 
+        framebufferSTRING_ROW(2), 
+        framebufferSTRING_WIDTH(ulPlayerWinsLength) + 20, 
+        framebufferSTRING_ROW(3)
+    );
+    if(eWinner == ePlayer1) {
+        ucFrameBufferSetStringInverted(
+                framebufferCENTRALIZE_STRING_BOX(ulPlayerWinsLength, framebufferCENTRALIZE_STRING(ulPlayerWinsLength), framebufferSTRING_WIDTH(ulPlayerWinsLength)), 
+                framebufferSTRING_ROW(3), 
+                pcPlayer1Wins
+        );
+    }
+    else {
+        ucFrameBufferSetStringInverted(
+                framebufferCENTRALIZE_STRING_BOX(ulPlayerWinsLength, framebufferCENTRALIZE_STRING(ulPlayerWinsLength), framebufferSTRING_WIDTH(ulPlayerWinsLength)), 
+                framebufferSTRING_ROW(3), 
+                pcPlayer2Wins
+        );
+    }
+    vFrameBufferFlush();
+}
+
 void vSystemSetLed(Led eLed) {
     vPinSetLevel(ulSystemLeds[eLed]);
 }
@@ -309,11 +344,24 @@ inline static void prvSystemDisplayDrawLine(void) {
     }
 }
 
+inline static void prvSystemDisplayDrawCrosses(uint8_t ucX, uint8_t ucNumberCrosses) {
+    for(uint8_t i = 0; i < ucNumberCrosses; i++) {
+        for(int8_t j = 0; j < fontCHAR_WIDTH; j++) {
+            vFrameBufferSetPixel(ucX + i*systemCROSS_WIDTH + j, j);
+            vFrameBufferSetPixel(ucX + i*systemCROSS_WIDTH + j, fontCHAR_WIDTH - j - 1);
+        }
+    }
+}
+
 inline static void prvSystemDisplayDrawPlayer(const Player_t *pxPlayer) {
     vFrameBufferSetRectangle(pxPlayer->ulX, pxPlayer->ulY, systemPLAYER_WIDTH, systemPLAYER_HEIGHT);
 
-    uint32_t ulScoreX = (pxPlayer->eId == ePlayer1)? 0 : (systemDISPLAY_WIDTH - 3*fontCHAR_WIDTH);
-    ucFrameBufferSetString(ulScoreX, 0, pxPlayer->pcPointsString);
+    uint32_t ulScoreX = (pxPlayer->eId == ePlayer1)? 0 : (systemDISPLAY_WIDTH - systemPLAYER_POINTS_STRING_LENGTH*fontCHAR_WIDTH);
+    ucFrameBufferSetString(ulScoreX, framebufferSTRING_ROW(0), pxPlayer->pcPointsString);
+
+    uint32_t ulWinsX = (pxPlayer->eId == ePlayer1)? ulScoreX + 2*fontCHAR_WIDTH + systemCROSS_WIDTH : ulScoreX - 3*systemCROSS_WIDTH;
+    
+    prvSystemDisplayDrawCrosses(ulWinsX, pxPlayer->ucWins);
 }
 
 inline static void prvSystemDisplayDrawBall(const Ball_t *pxBall) {

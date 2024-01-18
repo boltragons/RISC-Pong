@@ -14,6 +14,8 @@
 
 #define framebufferSTRING_ROW(ulRow)                (8*ulRow)
 
+#define framebufferCHAR_HEIGHT                      (8)
+
 #include <stdint.h>
 
 void vFrameBufferInit();

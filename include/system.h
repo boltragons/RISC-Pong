@@ -14,6 +14,12 @@
 
 #define systemBALL_DEFAULT_SPEED            ( 200 )
 
+#define systemPLAYER_POINTS_STRING_LENGTH   ( 2 )
+
+#define systemPLAYER_POINTS_TO_WIN          ( 11 )
+
+#define systemMINIMUM_OF_VICTORIES          ( 2 )
+
 /* System Enums */
 
 typedef enum Level {
@@ -62,8 +68,9 @@ typedef struct Player_t {
     PlayerId eId;
     uint32_t ulX;
     uint32_t ulY;
-    uint32_t ulPoints;
-    char pcPointsString[4];
+    uint8_t ucPoints;
+    uint8_t ucWins;
+    char pcPointsString[systemPLAYER_POINTS_STRING_LENGTH + 2];
 } Player_t;
 
 typedef struct Ball_t {
@@ -96,6 +103,8 @@ void vSystemDisplayUpdateFrame(const Player_t *pxPlayer01, const Player_t *pxPla
 void vSystemDisplayMainScreen(void);
 
 void vSystemDisplaySelectionScreen(void);
+
+void vSystemDisplayGameOverScreen(PlayerId eWinner);
 
 /* LED Interface */
 
