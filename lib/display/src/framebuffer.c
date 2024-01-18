@@ -61,6 +61,14 @@ uint8_t ucFrameBufferSetStringInverted(uint8_t x, uint8_t y, const char *pcStrin
 	return ucLastX;
 }
 
+void vFrameBufferSetRectangle(uint8_t ucX, uint8_t ucY, uint8_t ucWidth, uint8_t ucHeight) {
+	for(uint32_t ulDrawY = ucY; ulDrawY < ucY + ucHeight; ulDrawY++) {
+        for(uint32_t ulDrawX = ucX; ulDrawX < ucX + ucWidth; ulDrawX++) {
+            vFrameBufferSetPixel(ulDrawX, ulDrawY);
+        }
+    }
+}
+
 void vFrameBufferSetPixel(uint8_t x, uint8_t y) {
 	ucFrameBuffer[x][y/8] |= 1 << y%8;
 }
