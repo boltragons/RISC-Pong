@@ -88,6 +88,8 @@ void vSystemDisplayUpdateFrame(const Player_t *pxPlayer01, const Player_t *pxPla
 
 void vSystemDisplayMainScreen(void);
 
+void vSystemDisplaySelectionScreen(void);
+
 /* LED Interface */
 
 void vSystemSetLed(Led eLed);

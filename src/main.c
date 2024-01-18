@@ -278,6 +278,30 @@ static inline void prvSystemConfig(void) {
         && !eSystemReadButton(eBlueButton) 
         && !eSystemReadButton(eYellowButton) 
         && !eSystemReadButton(eRedButton));
+
+    vSystemDisplaySelectionScreen();
+
+    /* Temporary Delay */
+    for(int i = 0; i < 10000; i++);
+
+    while(1) {
+        if(eSystemReadButton(eGreenButton)) {
+            xBall.ulVelocityY = -xBall.ulVelocityY;
+            xBall.ulVelocityX = -xBall.ulVelocityX;
+            break;
+        }
+        else if(eSystemReadButton(eBlueButton)) {
+            xBall.ulVelocityX = -xBall.ulVelocityX;
+            break;
+        }
+        else if(eSystemReadButton(eYellowButton)) {
+            break;
+        }
+        else if(eSystemReadButton(eRedButton)) {
+            xBall.ulVelocityY = -xBall.ulVelocityY;
+            break;
+        }
+    }
 }
 
 static inline void prvKernelConfig(void) {

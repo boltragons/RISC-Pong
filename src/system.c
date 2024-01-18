@@ -142,13 +142,58 @@ void vSystemDisplayMainScreen(void) {
     const uint32_t ulMainTitleStartLength = strlen(pcMainTitleStart);
 
     vFrameBufferInit();
-    for(int y = 8; y < 32; y++) {
-        for(int x = displaySCREEN_WIDTH/2 - (ulMainTitleLength*fontCHAR_WIDTH)/2 - 10; x < displaySCREEN_WIDTH/2 + (ulMainTitleLength*fontCHAR_WIDTH)/2 + 10; x++) {
-            vFrameBufferSetPixel(x, y);
-        }
-    }
-    ucFrameBufferSetStringInverted(displaySCREEN_WIDTH/2 - (ulMainTitleLength*fontCHAR_WIDTH)/2, 16, pcMainTitle);
-    ucFrameBufferSetString(displaySCREEN_WIDTH/2 - (ulMainTitleStartLength*fontCHAR_WIDTH)/2, 48, pcMainTitleStart);
+    vFrameBufferSetRectangle(framebufferCENTRALIZE_STRING(ulMainTitleLength) - 10, framebufferSTRING_ROW(1), framebufferSTRING_WIDTH(ulMainTitleLength) + 20, framebufferSTRING_ROW(3));
+    ucFrameBufferSetStringInverted(framebufferCENTRALIZE_STRING(ulMainTitleLength), framebufferSTRING_ROW(2), pcMainTitle);
+    ucFrameBufferSetString(framebufferCENTRALIZE_STRING(ulMainTitleStartLength), framebufferSTRING_ROW(6), pcMainTitleStart);
+    vFrameBufferFlush();
+}
+
+void vSystemDisplaySelectionScreen(void) {
+    static const char *pcSelectTitle = "Who will serve?";
+    static const uint32_t ulSelectTitleLength = 15;
+
+    static const char *pcPlayer1Select = "P1";
+    static const char *pcPlayer2Select = "P2";
+    static const uint32_t ulPlayerSelectLength = 2;
+
+    static const uint32_t ulPlayerSelect1BoxX = 0;
+    static const uint32_t ulPlayerSelect2BoxX = displaySCREEN_WIDTH/2 + 10;
+    static const uint32_t ulPlayerSelectBoxWidth = displaySCREEN_WIDTH/2 - 10;
+
+    vFrameBufferInit();
+
+    vFrameBufferSetRectangle(
+            ulPlayerSelect1BoxX, 
+            framebufferSTRING_ROW(5), 
+            ulPlayerSelectBoxWidth, 
+            framebufferSTRING_ROW(3)
+    );
+
+    vFrameBufferSetRectangle(
+            ulPlayerSelect2BoxX, 
+            framebufferSTRING_ROW(5), 
+            ulPlayerSelectBoxWidth, 
+            framebufferSTRING_ROW(3)
+    );
+
+    ucFrameBufferSetString(
+            framebufferCENTRALIZE_STRING(ulSelectTitleLength), 
+            framebufferSTRING_ROW(1), 
+            pcSelectTitle
+    );
+
+    ucFrameBufferSetStringInverted(
+            framebufferCENTRALIZE_STRING_BOX(ulPlayerSelectLength, ulPlayerSelect1BoxX, ulPlayerSelectBoxWidth), 
+            framebufferSTRING_ROW(6), 
+            pcPlayer1Select
+    );
+
+    ucFrameBufferSetStringInverted(
+            framebufferCENTRALIZE_STRING_BOX(ulPlayerSelectLength, ulPlayerSelect2BoxX, ulPlayerSelectBoxWidth), 
+            framebufferSTRING_ROW(6), 
+            pcPlayer2Select
+    );
+
     vFrameBufferFlush();
 }
 
@@ -260,22 +305,14 @@ inline static void prvSystemDisplayDrawLine(void) {
 }
 
 inline static void prvSystemDisplayDrawPlayer(const Player_t *pxPlayer) {
-    for(int y = pxPlayer->ulY; y < pxPlayer->ulY + systemPLAYER_HEIGHT; y++) {
-        for(int x = pxPlayer->ulX; x < pxPlayer->ulX + systemPLAYER_WIDTH; x++) {
-            vFrameBufferSetPixel(x, y);
-        }
-    }
+    vFrameBufferSetRectangle(pxPlayer->ulX, pxPlayer->ulY, systemPLAYER_WIDTH, systemPLAYER_HEIGHT);
 
     uint32_t ulScoreX = (pxPlayer->eId == ePlayer1)? 0 : (systemDISPLAY_WIDTH - 3*fontCHAR_WIDTH);
     ucFrameBufferSetString(ulScoreX, 0, pxPlayer->pcPointsString);
 }
 
 inline static void prvSystemDisplayDrawBall(const Ball_t *pxBall) {
-    for(int y = pxBall->ulY; y < pxBall->ulY + systemBALL_HEIGHT; y++) {
-        for(int x = pxBall->ulX; x < pxBall->ulX + systemBALL_WIDTH; x++) {
-            vFrameBufferSetPixel(x, y);
-        }
-    }
+    vFrameBufferSetRectangle(pxBall->ulX, pxBall->ulY, systemBALL_WIDTH, systemBALL_HEIGHT);
 }
 
 inline static PlayerId prvSystemCheckWallColisionDetection(Ball_t *pxBall) {
